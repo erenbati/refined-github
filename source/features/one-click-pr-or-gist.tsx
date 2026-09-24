@@ -45,7 +45,7 @@ function init(signal: AbortSignal): void | false {
 			>
 				{title}
 			</button>
-		);
+		) as HTMLButtonElement;
 
 		initialGroupedButtons.after(button);
 		if (isDraft) {
@@ -58,11 +58,13 @@ function init(signal: AbortSignal): void | false {
 	initialGroupedButtons.remove();
 
 	if (draftButton && primaryButton) {
-		const form = draftButton.form!;
+		const draft = draftButton;
+		const primary = primaryButton;
+		const form = draft.form!;
 		let activeUploads = 0;
 
 		function syncDraftButton(): void {
-			draftButton!.disabled = activeUploads > 0 || primaryButton!.disabled;
+			draft.disabled = activeUploads > 0 || primary.disabled;
 		}
 
 		function startUpload(): void {

@@ -1,7 +1,6 @@
 import './one-click-pr-or-gist.css';
 
 import cx from 'clsx';
-import React from 'dom-chef';
 import * as pageDetect from 'github-url-detection';
 import {$, $$, $optional, elementExists} from 'select-dom';
 
@@ -34,18 +33,14 @@ function init(signal: AbortSignal): void | false {
 			classList.push('btn-primary');
 		}
 
-		const button = (
-			<button
-				ref={withTooltipRef(description)}
-				data-disable-invalid
-				className={cx(classList)}
-				type="submit"
-				name={radioButton.name}
-				value={radioButton.value}
-			>
-				{title}
-			</button>
-		) as HTMLButtonElement;
+		const button = document.createElement('button');
+		withTooltipRef(description)(button);
+		button.dataset.disableInvalid = '';
+		button.className = cx(classList);
+		button.type = 'submit';
+		button.name = radioButton.name;
+		button.value = radioButton.value;
+		button.textContent = title;
 
 		initialGroupedButtons.after(button);
 		if (isDraft) {

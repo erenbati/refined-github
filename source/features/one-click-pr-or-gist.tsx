@@ -8,7 +8,7 @@ import {$, $$, $optional, elementExists} from 'select-dom';
 import {withTooltipRef} from '../components/tooltip.js';
 import features from '../feature-manager.js';
 
-function init(): void | false {
+function init(signal: AbortSignal): void | false {
 	const initialGroupedButtons = $optional('.BtnGroup:has([name="draft"], [name="gist[public]"])');
 	if (!initialGroupedButtons) {
 		// 1. Free accounts can't open Draft PRs in private repos, so this element is missing
@@ -18,19 +18,23 @@ function init(): void | false {
 
 	const parent = initialGroupedButtons.parentElement!;
 
-	for (const dropdownItem of $$('.select-menu-item', initialGroupedButtons)) {
+	let draftButton: HTMLButtonElement | undefined;
+	let primaryButton: HTMLButtonElement | undefined;
+
+	for (const dropdownItem of $('.select-menu-item', initialGroupedButtons)) {
 		let title = $('.select-menu-item-heading', dropdownItem).textContent.trim();
 		const description = $('.description', dropdownItem).textContent.trim();
 		const radioButton = $('input[type=radio]', dropdownItem);
 		const classList = ['btn', 'ml-2'];
+		const isDraft = /\bdraft\b/i.test(title);
 
-		if (/\bdraft\b/i.test(title)) {
+		if (isDraft) {
 			title = 'Create draft PR';
 		} else {
 			classList.push('btn-primary');
 		}
 
-		initialGroupedButtons.after(
+		const button = (
 			<button
 				ref={withTooltipRef(description)}
 				data-disable-invalid
@@ -40,11 +44,42 @@ function init(): void | false {
 				value={radioButton.value}
 			>
 				{title}
-			</button>,
+			</button>
 		);
+
+		initialGroupedButtons.after(button);
+		if (isDraft) {
+			draftButton = button;
+		} else {
+			primaryButton = button;
+		}
 	}
 
 	initialGroupedButtons.remove();
+
+	if (draftButton && primaryButton) {
+		const form = draftButton.form!;
+		let activeUploads = 0;
+
+		function syncDraftButton(): void {
+			draftButton!.disabled = activeUploads > 0 || primaryButton!.disabled;
+		}
+
+		function startUpload(): void {
+			activeUploads += 1;
+			syncDraftButton();
+		}
+
+		function finishUpload(): void {
+			activeUploads = Math.max(0, activeUploads - 1);
+			queueMicrotask(syncDraftButton);
+		}
+
+		form.addEventListener('upload:setup', startUpload, {signal, capture: true});
+		form.addEventListener('upload:complete', finishUpload, {signal});
+		form.addEventListener('upload:error', finishUpload, {signal});
+		form.addEventListener('upload:invalid', finishUpload, {signal});
+	}
 
 	// Add minimal structure validation before adding a dangerous class
 	if (parent.classList.contains('d-flex') && parent.parentElement!.classList.contains('flex-justify-end')) {

@@ -1,6 +1,7 @@
 import './one-click-pr-or-gist.css';
 
 import cx from 'clsx';
+import React from 'dom-chef';
 import * as pageDetect from 'github-url-detection';
 import {$, $$, $optional, elementExists} from 'select-dom';
 
@@ -17,66 +18,52 @@ function init(signal: AbortSignal): void | false {
 
 	const parent = initialGroupedButtons.parentElement!;
 
-	let draftButton: HTMLButtonElement | undefined;
-	let primaryButton: HTMLButtonElement | undefined;
-
 	for (const dropdownItem of $$('.select-menu-item', initialGroupedButtons)) {
 		let title = $('.select-menu-item-heading', dropdownItem).textContent.trim();
 		const description = $('.description', dropdownItem).textContent.trim();
 		const radioButton = $('input[type=radio]', dropdownItem);
 		const classList = ['btn', 'ml-2'];
-		const isDraft = /\bdraft\b/i.test(title);
 
-		if (isDraft) {
+		if (/\bdraft\b/i.test(title)) {
 			title = 'Create draft PR';
 		} else {
 			classList.push('btn-primary');
 		}
 
-		const button = document.createElement('button');
-		withTooltipRef(description)(button);
-		button.dataset.disableInvalid = '';
-		button.className = cx(classList);
-		button.type = 'submit';
-		button.name = radioButton.name;
-		button.value = radioButton.value;
-		button.textContent = title;
-
-		initialGroupedButtons.after(button);
-		if (isDraft) {
-			draftButton = button;
-		} else {
-			primaryButton = button;
-		}
+		initialGroupedButtons.after(
+			<button
+				ref={withTooltipRef(description)}
+				data-disable-invalid
+				className={cx(classList)}
+				type="submit"
+				name={radioButton.name}
+				value={radioButton.value}
+			>
+				{title}
+			</button>,
+		);
 	}
 
 	initialGroupedButtons.remove();
 
-	if (draftButton && primaryButton) {
-		const draft = draftButton;
-		const primary = primaryButton;
-		const form = draft.form!;
-		let activeUploads = 0;
+	const secondaryButton = $('button.btn:not(.btn-primary)[type="submit"][data-disable-invalid]', parent);
+	const primaryButton = $('button.btn-primary[type="submit"][data-disable-invalid]', parent);
 
-		function syncDraftButton(): void {
-			draft.disabled = activeUploads > 0 || primary.disabled;
-		}
-
-		function startUpload(): void {
-			activeUploads += 1;
-			syncDraftButton();
-		}
-
-		function finishUpload(): void {
-			activeUploads = Math.max(0, activeUploads - 1);
-			queueMicrotask(syncDraftButton);
-		}
-
-		form.addEventListener('upload:setup', startUpload, {signal, capture: true});
-		form.addEventListener('upload:complete', finishUpload, {signal});
-		form.addEventListener('upload:error', finishUpload, {signal});
-		form.addEventListener('upload:invalid', finishUpload, {signal});
+	function disableSecondaryButton(): void {
+		secondaryButton.disabled = true;
 	}
+
+	function syncSecondaryButton(): void {
+		queueMicrotask(() => {
+			secondaryButton.disabled = primaryButton.disabled;
+		});
+	}
+
+	const form = primaryButton.form!;
+	form.addEventListener('upload:setup', disableSecondaryButton, {signal, capture: true});
+	form.addEventListener('upload:complete', syncSecondaryButton, {signal});
+	form.addEventListener('upload:error', syncSecondaryButton, {signal});
+	form.addEventListener('upload:invalid', syncSecondaryButton, {signal});
 
 	// Add minimal structure validation before adding a dangerous class
 	if (parent.classList.contains('d-flex') && parent.parentElement!.classList.contains('flex-justify-end')) {

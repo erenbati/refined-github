@@ -21,7 +21,7 @@ function init(signal: AbortSignal): void | false {
 	let draftButton: HTMLButtonElement | undefined;
 	let primaryButton: HTMLButtonElement | undefined;
 
-	for (const dropdownItem of $('.select-menu-item', initialGroupedButtons)) {
+	for (const dropdownItem of $$('.select-menu-item', initialGroupedButtons)) {
 		let title = $('.select-menu-item-heading', dropdownItem).textContent.trim();
 		const description = $('.description', dropdownItem).textContent.trim();
 		const radioButton = $('input[type=radio]', dropdownItem);

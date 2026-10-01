@@ -1,6 +1,9 @@
 html:not([rgh-OFF-align-issue-labels]) {
 	div[class^='IssueRow-module__row'],
 	div[class^='PullRequestRow-module__row'],
+	div[class^='ListItems-module__listItem']:has(
+		button[class*='IssueListItem-module__authorLink']
+	),
 	li[class*='PullsListItem']:not([class*='compact']) {
 		div[class^='Title-module__container'] {
 			display: contents;
